@@ -3,6 +3,24 @@ import regex as re
 from cs336_basics.pretokenization_example import find_chunk_boundaries
 from collections import Counter
 import multiprocessing as mp
+import time
+
+def process_chunk(boundary1, boundary2, input_path, special_tokens, PAT):
+    frequency_table = Counter()
+    with open(input_path, "rb") as f:
+        f.seek(boundary1)
+        chunk = f.read(boundary2 - boundary1).decode("utf-8", errors="ignore")
+        # remove special tokens from chunk
+        splits = re.split("|".join(re.escape(tok) for tok in special_tokens), chunk)
+        for split in splits:
+            if split.strip() == "":
+                continue
+            pretokenized_data = re.findall(PAT, split)
+            for token in pretokenized_data:
+                token_bytes = token.encode('utf-8')
+                token_tuple = tuple(bytes([b]) for b in token_bytes)
+                frequency_table[token_tuple] += 1
+    return frequency_table
 
 def train_bpe(input_path: str, vocab_size: int, special_tokens: list[str]) -> Tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
     vocab = {i: bytes([i]) for i in range(256)}
@@ -11,30 +29,28 @@ def train_bpe(input_path: str, vocab_size: int, special_tokens: list[str]) -> Tu
     merges = []
     PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
     with open(input_path, "rb") as f:
-        num_processes = 4
+        num_processes = 8
         boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
+        # parallel implementation
+        time1 = time.time()
+        args = [(start, end, input_path, special_tokens, PAT) for start, end in zip(boundaries[:-1], boundaries[1:])]
+        with mp.Pool(num_processes) as pool:
+            results = pool.starmap(process_chunk, args)
         frequency_table = Counter()
-        for start, end in zip(boundaries[:-1], boundaries[1:]):
-            f.seek(start)
-            chunk = f.read(end - start).decode("utf-8", errors="ignore")
-            # remove special tokens from chunk
-            # with mp.Pool(5) as pool:
-            splits = re.split("|".join(re.escape(tok) for tok in special_tokens), chunk)
-            for split in splits:
-                if split.strip() == "":
-                    continue
-                pretokenized_data = re.findall(PAT, split)
-                for token in pretokenized_data:
-                    token_bytes = token.encode('utf-8')
-                    token_tuple = tuple(bytes([b]) for b in token_bytes)
-                    frequency_table[token_tuple] += 1
+        for res in results:
+            frequency_table.update(res)
+        time2 = time.time()
+        print(f"Time taken for pretokenization processing: {time2 - time1} seconds")
 
-        
+    time1 = time.time()
     pair_frequencies = {}
     for token_tuple, freq in frequency_table.items():
         for i in range(len(token_tuple) - 1):
             pair = (token_tuple[i], token_tuple[i + 1])
             pair_frequencies[pair] = pair_frequencies.get(pair, 0) + freq
+    time2 = time.time()
+    print(f"Time taken for initial pair frequency calculation: {time2 - time1} seconds")
+    time1 = time.time()
     while len(vocab) < vocab_size:
         # take the max lexicographical pair
         best_pair = max(pair_frequencies.items(), key=lambda x: (x[1], x[0]))[0]
@@ -74,12 +90,21 @@ def train_bpe(input_path: str, vocab_size: int, special_tokens: list[str]) -> Tu
                 del pair_frequencies[pair]
 
 
-    
+    time2 = time.time()
+    print(f"Time taken for merging pairs: {time2 - time1} seconds")
 
     return vocab, merges
 
 
 if __name__ == "__main__":
-   vocab, merges = train_bpe("sample_text.txt", 1000, ["<|endoftext|>"])
-#    print(vocab)
+    vocab, merges = train_bpe("sample_text.txt", 10000, ["<|endoftext|>"])
+   # save results
+#     with open("bpe_vocab.txt", "w", encoding="utf-8") as f:
+#        for idx in sorted(vocab.keys()):
+#            f.write(f"{idx}\t{vocab[idx].decode('utf-8', errors='ignore')}\n")
+#     with open("bpe_merges.txt", "w", encoding="utf-8") as f:
+#         for merge in merges:
+#             f.write(f"{merge[0].decode('utf-8', errors='ignore')} {merge[1].decode('utf-8', errors='ignore')}\n")
+# #    print(vocab)
 #    print(merges)
+    # vocab, merges = train_bpe("sample_text.txt", 300, ["<|endoftext|>"])
