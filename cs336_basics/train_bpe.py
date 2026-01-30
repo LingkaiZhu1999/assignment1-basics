@@ -101,7 +101,7 @@ if __name__ == "__main__":
     save_path = "/scratch/work/zhul2/code/assignment1-basics/cs336_basics/"
     file = "owt_train.txt"
     time1 = time.time()
-    vocab, merges = train_bpe(path + file, 10000, ["<|endoftext|>"])
+    vocab, merges = train_bpe(path + file, 32000, ["<|endoftext|>"])
     time2 = time.time()
     print(f"Total time taken: {time2 - time1} seconds")
 
