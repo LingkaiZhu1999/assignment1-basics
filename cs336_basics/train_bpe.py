@@ -7,6 +7,7 @@ import json
 
 from cs336_basics.pretokenization_example import find_chunk_boundaries
 from tests.common import gpt2_bytes_to_unicode
+
 def process_chunk(boundary1, boundary2, input_path, special_tokens, PAT):
     frequency_table = Counter()
     with open(input_path, "rb") as f:
@@ -50,6 +51,14 @@ def train_bpe(input_path: str, vocab_size: int, special_tokens: list[str]) -> Tu
             pair_frequencies[pair] = pair_frequencies.get(pair, 0) + freq
     time2 = time.time()
     print(f"Time taken for initial pair frequency calculation: {time2 - time1} seconds")
+
+    token_to_words = {}
+    for token_tuple in frequency_table:
+        for token in set(token_tuple):
+            if token not in token_to_words:
+                token_to_words[token] = set()
+            token_to_words[token].add(token_tuple)
+
     time1 = time.time()
 
     while len(vocab) < vocab_size:
@@ -63,7 +72,16 @@ def train_bpe(input_path: str, vocab_size: int, special_tokens: list[str]) -> Tu
             break
         vocab[len(vocab)] = best_pair[0] + best_pair[1]
         # update frequency table with merged pairs
-        for token_tuple, freq in list(frequency_table.items()):
+        a, b = best_pair
+        if a in token_to_words and b in token_to_words:
+            words_to_update = list(token_to_words[a] & token_to_words[b])
+        else:
+            words_to_update = []
+
+        for token_tuple in words_to_update:
+            if token_tuple not in frequency_table:
+                continue
+            freq = frequency_table[token_tuple]
             merged = []
             a, b = best_pair
             i = 0
@@ -86,7 +104,18 @@ def train_bpe(input_path: str, vocab_size: int, special_tokens: list[str]) -> Tu
                         i += 1
             else:
                 continue
-            frequency_table[tuple(merged)] = frequency_table.pop(token_tuple)
+            new_token_tuple = tuple(merged)
+            frequency_table[new_token_tuple] = frequency_table.pop(token_tuple)
+
+            for token in set(token_tuple):
+                token_to_words[token].discard(token_tuple)
+                if not token_to_words[token]:
+                    del token_to_words[token]
+            for token in set(new_token_tuple):
+                if token not in token_to_words:
+                    token_to_words[token] = set()
+                token_to_words[token].add(new_token_tuple)
+
         del pair_frequencies[best_pair]
 
 
