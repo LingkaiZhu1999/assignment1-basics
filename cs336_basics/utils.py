@@ -4,3 +4,7 @@ def get_compression_ratio(string: str, indices: list[int]) -> float:
     num_bytes = len(string.encode('utf-8'))
     num_tokens = len(indices)
     return num_bytes / num_tokens
+
+def get_throughput(string: str, time: float) -> float:
+    num_bytes = len(string.encode('utf-8'))
+    return num_bytes / time

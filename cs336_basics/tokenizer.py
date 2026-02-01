@@ -139,24 +139,56 @@ class Tokenizer:
     
 
 if __name__ == "__main__":
-    import tiktoken
+    import numpy as np
     tokenizer = Tokenizer.from_files(
-        "../tests/fixtures/gpt2_vocab.json",
-        "../tests/fixtures/gpt2_merges.txt",
-        special_tokens=["<|endoftext|>", "<|endoftext|><|endoftext|>"]
+        "TinyStoriesV2-GPT4-train.json",
+        "TinyStoriesV2-GPT4-train_merges.txt",
+        special_tokens=["<|endoftext|>"]
     )
 
-    corpus_path = "../tests/fixtures/tinystories_sample.txt"
+    corpus_path = "../data/TinyStoriesV2-GPT4-train.txt"
     with open(corpus_path) as f:
         corpus_contents = f.read()
     all_ids = []
     with open(corpus_path) as f:
         for _id in tokenizer.encode_iterable(f):
             all_ids.append(_id)
+    # save all_ids to numpy array of datatype uint16
+    np.save("../data/tinystories_train_tokenized.npy", np.array(all_ids, dtype=np.uint16))
+
+    corpus_path = "../data/TinyStoriesV2-GPT4-valid.txt"
     with open(corpus_path) as f:
         corpus_contents = f.read()
-    print(all_ids)
-    assert tokenizer.decode(all_ids) == corpus_contents
+    all_ids = []
+    with open(corpus_path) as f:
+        for _id in tokenizer.encode_iterable(f):
+            all_ids.append(_id)
+    np.save("../data/tinystories_valid_tokenized.npy", np.array(all_ids, dtype=np.uint16))
+
+    tokenizer = Tokenizer.from_files(
+        "owt_train.json",
+        "owt_train_merges.txt",
+        special_tokens=["<|endoftext|>"]
+    )
+    corpus_path = "../data/owt_train.txt"
+    with open(corpus_path) as f:
+        corpus_contents = f.read()
+    all_ids = []
+    with open(corpus_path) as f:
+        for _id in tokenizer.encode_iterable(f):
+            all_ids.append(_id)
+    np.save("../data/owt_train_tokenized.npy", np.array(all_ids, dtype=np.uint16))
+
+    corpus_path = "../data/owt_valid.txt"
+    with open(corpus_path) as f:
+        corpus_contents = f.read()
+    all_ids = []
+    with open(corpus_path) as f:
+        for _id in tokenizer.encode_iterable(f):
+            all_ids.append(_id)
+    np.save("../data/owt_valid_tokenized.npy", np.array(all_ids, dtype=np.uint16))
+    # print(all_ids)
+    # assert tokenizer.decode(all_ids) == corpus_contents
 
     # ids = tokenizer.encode("the cat ate")
     # ids = tokenizer.encode("Hello, how are you?")
