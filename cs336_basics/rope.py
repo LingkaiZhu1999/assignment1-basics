@@ -15,7 +15,6 @@ class RoPE(torch.nn.Module):
         
     
     def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
-        print(token_positions.shape)
         cos_vals = self.cos_cached[token_positions]
         sin_vals = self.sin_cached[token_positions]
         cos_vals = repeat(cos_vals, "... d -> ... (d repeat)", repeat=2)
