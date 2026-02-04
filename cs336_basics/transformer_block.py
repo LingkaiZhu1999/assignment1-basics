@@ -16,3 +16,4 @@ class TransformerBlock(torch.nn.Module):
         x = x + self.multihead_self_att(self.rmsnorm1(x), token_positions)
         x = x + self.swiglu(self.rmsnorm2(x))
         return x
+    
