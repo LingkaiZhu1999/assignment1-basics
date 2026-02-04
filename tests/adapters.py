@@ -8,6 +8,7 @@ import numpy.typing as npt
 import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
+from einops import repeat
 
 from cs336_basics.train_bpe import train_bpe
 from cs336_basics.tokenizer import Tokenizer
@@ -19,6 +20,7 @@ from cs336_basics.rope import RoPE
 from cs336_basics.softmax import softmax
 from cs336_basics.scaled_dot_product_attention import scaled_dot_product_attention
 from cs336_basics.multihead_self_attention import MultiheadSelfAttention
+from cs336_basics.transformer_block import TransformerBlock
 
 def run_linear(
     d_in: int,
@@ -299,7 +301,19 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    transformer_block = TransformerBlock(d_model, num_heads, d_ff, use_rope=True, theta=theta, max_seq_len=max_seq_len)
+    transformer_block.multihead_self_att.q_proj.weight.data = weights["attn.q_proj.weight"]
+    transformer_block.multihead_self_att.k_proj.weight.data = weights["attn.k_proj.weight"]
+    transformer_block.multihead_self_att.v_proj.weight.data = weights["attn.v_proj.weight"]
+    transformer_block.multihead_self_att.o_proj.weight.data = weights["attn.output_proj.weight"]
+    transformer_block.swiglu.weight1.data = weights["ffn.w1.weight"]
+    transformer_block.swiglu.weight2.data = weights["ffn.w2.weight"]
+    transformer_block.swiglu.weight3.data = weights["ffn.w3.weight"]
+    transformer_block.rmsnorm1.weight.data = weights["ln1.weight"]
+    transformer_block.rmsnorm2.weight.data = weights["ln2.weight"]
+    token_positions = repeat(torch.arange(in_features.shape[1], device=in_features.device), 'seq -> batch seq', batch=in_features.shape[0])
+    return transformer_block(in_features, token_positions)
+
 
 
 def run_transformer_lm(
@@ -405,7 +419,7 @@ def run_rmsnorm(
         RMSNorm of the `in_features`.
     """
     rmsnorm = RMSNorm(d_model, eps)
-    rmsnorm.gain.data = weights
+    rmsnorm.weight.data = weights
     return rmsnorm(in_features)
 
 
