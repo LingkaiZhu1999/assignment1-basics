@@ -30,4 +30,8 @@ class Transformer_LM(torch.nn.Module):
         return x
     
 if __name__ == "__main__":
-    transformer = Transformer_LM(10, 10, 3, 10000, 1000, 3, 10000)
+    from utils import count_parameters
+    transformer = Transformer_LM(1600, 25, 6400, 50257, 1024, 48, 10000)
+    num_params = count_parameters(transformer)
+    print(num_params)
+    

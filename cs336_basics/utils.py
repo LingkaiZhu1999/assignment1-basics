@@ -8,3 +8,6 @@ def get_compression_ratio(string: str, indices: list[int]) -> float:
 def get_throughput(string: str, time: float) -> float:
     num_bytes = len(string.encode('utf-8'))
     return num_bytes / time
+
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
