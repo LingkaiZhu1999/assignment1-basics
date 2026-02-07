@@ -16,7 +16,7 @@ def data_loading(x: np.array, batch_size: int, context_length: int, device: str)
         inputs[i] = x[start_idx : start_idx + context_length]
         targets[i] = x[start_idx + 1 : start_idx + context_length + 1]
     
-    return torch.tensor(inputs, device=device), torch.tensor(targets, device=device)
+    return torch.tensor(inputs, dtype=torch.long, device=device), torch.tensor(targets, dtype=torch.long, device=device)
 
 
 if __name__ == "__main__":
