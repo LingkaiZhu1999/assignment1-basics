@@ -17,8 +17,14 @@ class RoPE(torch.nn.Module):
     def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
         cos_vals = self.cos_cached[token_positions]
         sin_vals = self.sin_cached[token_positions]
-        cos_vals = repeat(cos_vals, "... seq d -> ... 1 seq (d repeat)", repeat=2)
-        sin_vals = repeat(sin_vals, "... seq d -> ... 1 seq (d repeat)", repeat=2)
+        if cos_vals.dim() == 2:
+            cos_vals = rearrange(cos_vals, "seq d -> 1 1 seq d")
+            sin_vals = rearrange(sin_vals, "seq d -> 1 1 seq d")
+        elif cos_vals.dim() == 3 and x.dim() == 4:
+            cos_vals = rearrange(cos_vals, "batch seq d -> batch 1 seq d")
+            sin_vals = rearrange(sin_vals, "batch seq d -> batch 1 seq d")
+        cos_vals = repeat(cos_vals, "... seq d -> ... seq (d repeat)", repeat=2)
+        sin_vals = repeat(sin_vals, "... seq d -> ... seq (d repeat)", repeat=2)
         cos_parts = x * cos_vals
         x_rotated = x.clone()
         x_rotated[..., 0::2] = -x_rotated[..., 1::2]
