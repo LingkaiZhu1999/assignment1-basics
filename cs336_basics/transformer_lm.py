@@ -14,7 +14,7 @@ class Transformer_LM(torch.nn.Module):
         d_ff, use_rope=True, theta=rope_theta, max_seq_len=context_length) for i in range(num_layers)]
         )
         self.rmsnorm = RMSNorm(d_model)
-        self.lm_head = Linear(vocab_size, d_model)
+        self.lm_head = Linear(d_model, vocab_size)
         # self.output_embedding = Embedding(vocab_size, d_model)
 
 
