@@ -141,12 +141,22 @@ class Tokenizer:
 if __name__ == "__main__":
     import numpy as np
     from pretokenization_example import find_chunk_boundaries
-    # tokenizer = Tokenizer.from_files(
-    #     "TinyStoriesV2-GPT4-train.json",
-    #     "TinyStoriesV2-GPT4-train_merges.txt",
-    #     special_tokens=["<|endoftext|>"]
-    # )
+    tokenizer = Tokenizer.from_files(
+        "TinyStoriesV2-GPT4-train.json",
+        "TinyStoriesV2-GPT4-train_merges.txt",
+        special_tokens=["<|endoftext|>"]
+    )
 
+    corpus_path = "../data/sample_text.txt"
+    all_ids = []
+    with open(corpus_path) as f:
+        for _id in tokenizer.encode_iterable(f):
+            all_ids.append(_id)
+    # # save all_ids to numpy array of datatype uint16
+    print(max(all_ids))
+    np.save("../data/sample_text.npy", np.array(all_ids, dtype=np.uint16))
+    loaded = np.load("../data/sample_text.npy", mmap_mode="r")
+    print(loaded.max())
     # corpus_path = "../data/TinyStoriesV2-GPT4-train.txt"
     # all_ids = []
     # with open(corpus_path) as f:
@@ -162,27 +172,27 @@ if __name__ == "__main__":
     #         all_ids.append(_id)
     # np.save("../data/tinystories_valid_tokenized.npy", np.array(all_ids, dtype=np.uint16))
 
-    tokenizer = Tokenizer.from_files(
-        "owt_train.json",
-        "owt_train_merges.txt",
-        special_tokens=["<|endoftext|>"]
-    )
-    all_ids = []
-    corpus_path = "../data/owt_train.txt"
-    with open(corpus_path, "rb") as f:
-        boundaries = find_chunk_boundaries(f, 8, b"<|endoftext|>")
-        for start, end in zip(boundaries[:-1], boundaries[1:]):
-            f.seek(start)
-            chunk = f.read(end - start).decode("utf-8", errors="ignore")
-            all_ids.extend(tokenizer.encode(chunk))
-    np.save("../data/owt_train_tokenized.npy", np.array(all_ids, dtype=np.uint16))
+    # tokenizer = Tokenizer.from_files(
+    #     "owt_train.json",
+    #     "owt_train_merges.txt",
+    #     special_tokens=["<|endoftext|>"]
+    # )
+    # all_ids = []
+    # corpus_path = "../data/owt_train.txt"
+    # with open(corpus_path, "rb") as f:
+    #     boundaries = find_chunk_boundaries(f, 8, b"<|endoftext|>")
+    #     for start, end in zip(boundaries[:-1], boundaries[1:]):
+    #         f.seek(start)
+    #         chunk = f.read(end - start).decode("utf-8", errors="ignore")
+    #         all_ids.extend(tokenizer.encode(chunk))
+    # np.save("../data/owt_train_tokenized.npy", np.array(all_ids, dtype=np.uint16))
 
-    corpus_path = "../data/owt_valid.txt"
-    all_ids = []
-    with open(corpus_path) as f:
-        for _id in tokenizer.encode_iterable(f):
-            all_ids.append(_id)
-    np.save("../data/owt_valid_tokenized.npy", np.array(all_ids, dtype=np.uint16))
+    # corpus_path = "../data/owt_valid.txt"
+    # all_ids = []
+    # with open(corpus_path) as f:
+    #     for _id in tokenizer.encode_iterable(f):
+    #         all_ids.append(_id)
+    # np.save("../data/owt_valid_tokenized.npy", np.array(all_ids, dtype=np.uint16))
     # print(all_ids)
     # assert tokenizer.decode(all_ids) == corpus_contents
 
