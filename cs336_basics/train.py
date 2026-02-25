@@ -1,13 +1,17 @@
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from cs336_basics.transformer_lm import Transformer_LM
 from cs336_basics.adamw import AdamW
 from cs336_basics.data_loading import data_loading
 from cs336_basics.cross_entropy import cross_entropy
 
-import os
 import numpy as np
 import wandb
 
-def train(args):
+def train(run, args):
     data_path = os.path.join(os.path.dirname(__file__), "..", "data", "sample_text.npy")
     data = np.load(data_path, mmap_mode="r")
     model = Transformer_LM(args.d_model, args.num_heads, args.d_ff, args.vocab_size, args.context_length, args.num_layers, rope_theta=args.theta).to(args.device)
@@ -20,7 +24,7 @@ def train(args):
         loss = cross_entropy(outputs, targets)
         loss.backward()
         optimizer.step()
-        print(iter, loss.item())
+        run.log({"loss": loss})
 
 
 
@@ -44,10 +48,11 @@ if __name__ == "__main__":
     parser.add_argument("--num_layers", type=int, default=1)
     parser.add_argument("--num_heads", type=int, default=5)
     parser.add_argument("--theta", type=float, default=10000, help="theta for rope")
-    parser.add_argument("--device", type=str, default="cpu")
+    parser.add_argument("--device", type=str, default="cuda:0")
     args = parser.parse_args()
     print(args)
-    train(args=args)
+    run = wandb.init(project=parser.prog)
+    train(run, args=args)
 
 
     # load data 
