@@ -20,18 +20,19 @@ def data_loading(x: np.array, batch_size: int, context_length: int, device: str)
 
 
 def valid_data_loading(x: np.array, batch_size: int, context_length: int, device: str, index: int):
-    max_start_index = len(x) - context_length
-    start_idx0 = index * batch_size
+    num_sequences = (len(x) - 1) // context_length
+    seq_idx0 = index * batch_size
 
-    if start_idx0 >= max_start_index:
+    if seq_idx0 >= num_sequences:
         raise IndexError("Validation batch index out of range")
 
-    effective_batch_size = min(batch_size, max_start_index - start_idx0)
+    effective_batch_size = min(batch_size, num_sequences - seq_idx0)
 
     # Create input and target arrays
     inputs = np.zeros((effective_batch_size, context_length), dtype=x.dtype)
     targets = np.zeros((effective_batch_size, context_length), dtype=x.dtype)
-    for i, start_idx in enumerate(range(start_idx0, start_idx0 + effective_batch_size)):
+    for i, seq_idx in enumerate(range(seq_idx0, seq_idx0 + effective_batch_size)):
+        start_idx = seq_idx * context_length
         inputs[i] = x[start_idx : start_idx + context_length]
         targets[i] = x[start_idx + 1 : start_idx + context_length + 1]
     

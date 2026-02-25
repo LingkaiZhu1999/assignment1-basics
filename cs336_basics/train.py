@@ -47,11 +47,11 @@ def train(run, args):
 
 
 def validate(valid_data, model, args):
-    max_start_index = len(valid_data) - args.context_length
-    if max_start_index <= 0:
+    num_sequences = (len(valid_data) - 1) // args.context_length
+    if num_sequences <= 0:
         return float("nan")
 
-    iters = (max_start_index + args.batch_size - 1) // args.batch_size
+    iters = (num_sequences + args.batch_size - 1) // args.batch_size
     model.eval()
     total_loss = 0.0
     total_sequences = 0
@@ -66,14 +66,6 @@ def validate(valid_data, model, args):
             total_loss += loss.item() * current_batch_size
             total_sequences += current_batch_size
     return total_loss / total_sequences
-
-
-
-
-
-
-
-
 
 
 if __name__ == "__main__":
