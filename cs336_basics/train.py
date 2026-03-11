@@ -17,10 +17,14 @@ import torch
 torch.set_float32_matmul_precision('high')
 
 def train(run, args): 
-    train_data_path = os.path.join(os.path.dirname(__file__), "..", "data", "tinystories_train_tokenized.npy")
+    train_data_path = os.path.join(os.path.dirname(__file__), "..", "data", "owt_train_tokenized.npy")
     train_data = np.load(train_data_path, mmap_mode="r")
-    valid_data_path = os.path.join(os.path.dirname(__file__), "..", "data", "tinystories_valid_tokenized.npy")
+    valid_data_path = os.path.join(os.path.dirname(__file__), "..", "data", "owt_valid_tokenized.npy")
     valid_data = np.load(valid_data_path, mmap_mode="r")
+    if args.use_bfp16:
+        dtype = torch.bfloat16
+    else:
+        dtype = torch.float32
     model = Transformer_LM(args.d_model, args.num_heads, args.d_ff, args.vocab_size, args.context_length, args.num_layers, rope_theta=args.theta).to(args.device)
     model = torch.compile(model)
     optimizer = AdamW(
@@ -40,21 +44,22 @@ def train(run, args):
             group["lr"] = current_lr
         optimizer.zero_grad()
         inputs, targets = data_loading(train_data, args.batch_size, args.context_length, device=args.device)
-        outputs = model(inputs)
-        loss = cross_entropy(outputs, targets)
+        with torch.amp.autocast(device_type='cuda', dtype=dtype):
+            outputs = model(inputs)
+            loss = cross_entropy(outputs, targets)
         loss.backward()
         gradient_clipping(model.parameters(), args.max_l2_norm)
         optimizer.step()
         run.log({"loss/train": loss.item()})
         print("iter: ", iter, "loss: ", loss.item())
         if iter % args.eval_interval == 0:
-            valid_loss = validate(valid_data, model, args)
+            valid_loss = validate(valid_data, model, args, dtype)
             run.log({"loss/valid": valid_loss}) 
             print("iter: ", iter, "train loss: ", loss.item(), "valid loss: ", valid_loss)
-    save_checkpoint(model, optimizer, iterations, "final_model.pt")
+    save_checkpoint(model, optimizer, iterations, "owt_final_model.pt")
 
 
-def validate(valid_data, model, args):
+def validate(valid_data, model, args, dtype):
     num_sequences = (len(valid_data) - 1) // args.context_length
     if num_sequences <= 0:
         return float("nan")
@@ -68,8 +73,9 @@ def validate(valid_data, model, args):
             inputs, targets = valid_data_loading(
                 valid_data, args.batch_size, args.context_length, args.device, i
             )
-            outputs = model(inputs)
-            loss = cross_entropy(outputs, targets)
+            with torch.amp.autocast(device_type='cuda', dtype=dtype):
+                outputs = model(inputs)
+                loss = cross_entropy(outputs, targets)
             current_batch_size = inputs.shape[0]
             total_loss += loss.item() * current_batch_size
             total_sequences += current_batch_size
@@ -86,24 +92,25 @@ if __name__ == "__main__":
     )
     # parser.add_argument("--iterations", type=int, default=1000, help="total iterations for training")
     parser.add_argument("--total_tokens_processed", type=int, default=327680000, help="batch size * total step count * context length")
-    parser.add_argument("--iter_warmup", type=int, default=200, help="warm up iterations")
-    parser.add_argument("--lr_max", type=float, default=3e-3, help="learning rate max")
-    parser.add_argument("--lr_min", type=float, default=3e-4, help="learning rate min")
-    parser.add_argument("--iter_cos_annealing", type=int, default=20000, help="iteration for cosine annealing")
+    parser.add_argument("--iter_warmup", type=int, default=1000, help="warm up iterations")
+    parser.add_argument("--lr_max", type=float, default=9e-3, help="learning rate max")
+    parser.add_argument("--lr_min", type=float, default=9e-4, help="learning rate min")
+    parser.add_argument("--iter_cos_annealing", type=int, default=10000, help="iteration for cosine annealing")
     parser.add_argument("--betas", type=float, nargs=2, default=(0.9, 0.95), help="betas for AdamW")
     parser.add_argument("--eps", type=float, default=1e-8, help="eps for AdamW")
     parser.add_argument("--weight_decay", type=float, default=0.1, help="weight decay (l1/l2 norm coefficient)")
-    parser.add_argument("--batch_size", type=int, default=64, help="batch size")
-    parser.add_argument("--context_length", type=int, default=256, help="max sequence length")
+    parser.add_argument("--batch_size", type=int, default=32, help="batch size")
+    parser.add_argument("--context_length", type=int, default=1024, help="max sequence length")
     parser.add_argument("--d_model", type=int, default=512, help="dimension of model")
-    parser.add_argument("--d_ff", type=int, default=1344,)
-    parser.add_argument("--vocab_size", type=int, default=10000, help="10000 for tinystories, 30000 for owt")
-    parser.add_argument("--num_layers", type=int, default=4)
-    parser.add_argument("--num_heads", type=int, default=16)
+    parser.add_argument("--d_ff", type=int, default=1344, help="dimension of feed-forward network")
+    parser.add_argument("--vocab_size", type=int, default=32000, help="10000 for tinystories, 32000 for owt")
+    parser.add_argument("--num_layers", type=int, default=12, help="number of layers")
+    parser.add_argument("--num_heads", type=int, default=16, help="number of attention heads")
     parser.add_argument("--theta", type=float, default=10000, help="theta for rope")
     parser.add_argument("--eval_interval", type=int, default=1000, help="interval to run validation")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--max_l2_norm", type=float, default=1.0, help="max L2 norm for gradient clipping")
+    parser.add_argument("--use_bfp16", action='store_true', help="use bfloat16")
 
     args = parser.parse_args()
     run = wandb.init(project=parser.prog, config=vars(args))
