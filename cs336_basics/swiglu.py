@@ -18,7 +18,8 @@ class SwiGLU(torch.nn.Module):
 
     def forward(self, x):
         x1 = einsum(x, self.weight1, "... in_features, out_features in_features -> ... out_features")
-        x1 = x1 * torch.sigmoid(x1)
+        # x1 = x1 * torch.sigmoid(x1)
+        x1 = torch.nn.functional.silu(x1)
         x2 = einsum(x, self.weight3, "... in_features, out_features in_features -> ... out_features")
         x3 = x1 * x2
         x3 = einsum(x3, self.weight2, "... in_features, out_features in_features -> ... out_features")
