@@ -28,17 +28,18 @@ if __name__ == "__main__":
         "owt_train_merges.txt",
         special_tokens=["<|endoftext|>"]
     )
-    model = Transformer_LM(512, 16, 1344, 32000, 512, 12, 10000)
+    model = Transformer_LM(512, 16, 1344, 32000, 1024, 12, 10000)
     state_dict = torch.load("./owt_final_model.pt")["model_state_dict"]
     new_state_dict = {k.replace("_orig_mod.", ""): v for k, v in state_dict.items()}
     model.load_state_dict(new_state_dict)
     # load_checkpoint("./final_model.pt", model, )
-    inputs = torch.tensor([[256]])
-    temperature = 1
+    input_string = input("Enter a prompt: ")
+    input_tokens = torch.tensor([tokenizer.encode(input_string)])
+    temperature = 1.0
     top_p = 20
     max_tokens = 512
     end_token = 256
-    generated = decoding(inputs, model, temperature, top_p=top_p, max_tokens=max_tokens)
+    generated = decoding(input_tokens, model, temperature, top_p=top_p, max_tokens=max_tokens)
     print(generated.squeeze().tolist())
     # decode
     generated_text = tokenizer.decode(generated.squeeze().tolist())
