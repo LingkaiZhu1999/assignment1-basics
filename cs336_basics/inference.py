@@ -4,10 +4,10 @@ from softmax import temperature_scaling_softmax
 from cs336_basics.tokenizer import Tokenizer
 from cs336_basics.checkpointing import load_checkpoint
 
-def decoding(prompt: torch.Tensor, model: torch.Tensor, temperature: float, top_p: int, max_tokens: int= 1024, end_token: int=256):
+def decoding(prompt: torch.Tensor, model: Transformer_LM, temperature: float, top_p: int, max_tokens: int= 1024, end_token: int=256):
+    outputs, past_key_values = model(prompt, use_cache=True)
+    last_token_logits = outputs[:, -1:, :]
     for i in range(max_tokens):
-        outputs = model(prompt)
-        last_token_logits = outputs[:, -1:, :]
 
         probs = temperature_scaling_softmax(last_token_logits, -1, temperature=temperature)
         topk = torch.topk(probs, k=top_p, dim=-1)
@@ -19,6 +19,8 @@ def decoding(prompt: torch.Tensor, model: torch.Tensor, temperature: float, top_
         prompt = torch.cat([prompt, next_token], dim=1)
         if (next_token == end_token).any():
             break
+        outputs, past_key_values = model(next_token, past_key_values=past_key_values, use_cache=True)
+        last_token_logits = outputs[:, -1:, :]
     return prompt
 
 
