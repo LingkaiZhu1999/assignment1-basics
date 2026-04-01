@@ -53,7 +53,7 @@ class MultiheadSelfAttention(torch.nn.Module):
             past_len = past_key_value[0].shape[-2]
             key_positions = torch.arange(k_len, device=x.device)
             query_positions = torch.arange(past_len, past_len + q_len, device=x.device)
-            mask = key_positions.unsqueeze(0) <= query_positions.unsqueeze(1)
+            mask = rearrange(key_positions, "k -> 1 k") <= rearrange(query_positions, "q -> q 1")
 
         attention = scaled_dot_product_attention(K, Q, V, mask=mask)
         attention = rearrange(attention, "... num_heads seq d_v -> ... seq (num_heads d_v)")
